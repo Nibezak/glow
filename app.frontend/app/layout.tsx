@@ -1,40 +1,42 @@
 import './globals.css';
 import './react-grid-layout.scss';
-import { auth } from '@/app/lib/auth';
+import { getSession } from '@/app/lib/auth';
 import { PostHogIdentify, PostHogProvider } from '@/app/posthog-provider';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@trylinky/ui';
 import { Analytics } from '@vercel/analytics/react';
 import { Metadata } from 'next';
 import localFont from 'next/font/local';
+import { headers } from 'next/headers';
+import Script from 'next/script';
 
-const saans = localFont({
-  src: './saans-font.woff2',
+const seasonFont = localFont({
+  src: './ssn.woff2',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Glow - A delightfully rich link-in-bio.',
+  title: 'Linky - A delightfully rich link-in-bio.',
   description:
-    'Create your own dynamic link in bio page effortlessly with Glow, the personal page builder designed to help you stand out and connect with your audience.',
-  metadataBase: new URL('https://glow.as'),
+    'Create your own dynamic link in bio page effortlessly with Linky, the personal page builder designed to help you stand out and connect with your audience.',
+  metadataBase: new URL('https://lin.ky'),
   openGraph: {
     images: [
       {
-        url: 'https://glow.as/assets/og.png',
+        url: 'https://lin.ky/assets/og.png',
       },
     ],
     type: 'website',
-    url: 'https://glow.as',
-    title: 'Glow',
+    url: 'https://lin.ky',
+    title: 'Linky',
     description:
-      'Create your own dynamic link in bio page effortlessly with Glow, the personal page builder designed to help you stand out and connect with your audience.',
-    siteName: 'Glow',
+      'Create your own dynamic link in bio page effortlessly with Linky, the personal page builder designed to help you stand out and connect with your audience.',
+    siteName: 'Linky',
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@tryglow',
-    creator: '@tryglow',
-    images: 'https://glow.as/assets/og.png',
+    site: '@trylinky',
+    creator: '@trylinky',
+    images: 'https://lin.ky/assets/og.png',
   },
 };
 
@@ -43,18 +45,34 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
+
+  const sessionData = session.data;
+
+  const { user } = sessionData ?? {};
+
   return (
-    <html lang="en" className={saans.className}>
+    <html lang="en" className={seasonFont.className}>
+      <head>
+        {process.env.NODE_ENV === 'production' && (
+          <Script
+            src="https://analytics.ahrefs.com/analytics.js"
+            data-key="uOVisnglxzaKbI/UovGA7w"
+            defer={true}
+          />
+        )}
+      </head>
       <PostHogProvider>
-        <body className="bg-stone-50 min-h-screen">
+        <body className="bg-stone-50 min-h-screen relative">
           {children}
           <Toaster />
         </body>
-        {session?.user && (
+        {user && (
           <PostHogIdentify
-            userId={session.user.id}
-            teamId={session.currentTeamId}
+            userId={user.id}
+            organizationId={sessionData?.session.activeOrganizationId ?? ''}
           />
         )}
       </PostHogProvider>

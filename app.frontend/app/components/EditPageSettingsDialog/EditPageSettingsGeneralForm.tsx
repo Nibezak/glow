@@ -4,26 +4,24 @@ import { FormField } from '../FormField';
 import { updateGeneralPageSettings } from './actions';
 import { generalPageSettingsSchema } from './shared';
 import VerificationRequestDialog from '@/app/components/VerificationRequestDialog';
+import { ChevronDownIcon } from '@radix-ui/react-icons';
+import { captureException } from '@sentry/nextjs';
+import { InternalApi } from '@trylinky/common';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/app/components/ui/collapsible';
-import { InternalApi } from '@/app/lib/api';
-import { Button } from '@/components/ui/button';
-import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
-import { ChevronDownIcon } from '@radix-ui/react-icons';
-import { captureException } from '@sentry/nextjs';
+  Label,
+  Switch,
+  useToast,
+} from '@trylinky/ui';
 import { Form, Formik, FormikHelpers } from 'formik';
 import { withZodSchema } from 'formik-validator-zod';
 import { Loader2 } from 'lucide-react';
@@ -141,7 +139,7 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
             <div className="border-b border-white/10 pb-12">
               <div>
                 <FormField
-                  withPrefix="glow.as/"
+                  withPrefix="lin.ky/"
                   label="Handle"
                   name="pageSlug"
                   placeholder="your-page"
@@ -156,7 +154,7 @@ export function EditPageSettingsGeneral({ initialValues, pageId }: Props) {
                     Add a custom domain to your page for a one-time fee of{' '}
                     <del>$10</del> <ins className="font-semibold">$5</ins>. This
                     feature is still in beta, and you can enable it by reaching
-                    out to us at <a href="mailto:team@glow.as">team@glow.as</a>.
+                    out to us at <a href="mailto:team@lin.ky">team@lin.ky</a>.
                   </span>
                 </div>
               </div>

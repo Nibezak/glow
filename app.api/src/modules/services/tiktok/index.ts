@@ -1,20 +1,47 @@
 import { getTiktokUserInfo, requestToken, tiktokScopes } from './service';
-import { getSession } from '@/lib/auth';
 import { decrypt, encrypt, isEncrypted } from '@/lib/encrypt';
 import prisma from '@/lib/prisma';
 import { captureException } from '@sentry/node';
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  RouteOptions,
+} from 'fastify';
+
+// Define TikTok user info response type
+interface TikTokUserInfoResponse {
+  data?: {
+    user?: {
+      username?: string;
+      open_id?: string;
+      avatar_url?: string;
+    };
+  };
+}
+
+// Define encrypted state type
+interface EncryptedState {
+  userId: string;
+  blockId?: string;
+}
 
 export default async function tiktokServiceRoutes(
   fastify: FastifyInstance,
-  opts: any
-) {
+  opts: RouteOptions
+): Promise<void> {
   fastify.get('/', getTiktokRedirectHandler);
   fastify.get('/callback', getTiktokCallbackHandler);
 }
 
+interface TiktokRedirectQueryParams {
+  Querystring: {
+    blockId: string;
+  };
+}
+
 async function getTiktokRedirectHandler(
-  request: FastifyRequest<{ Querystring: { blockId: string } }>,
+  request: FastifyRequest<TiktokRedirectQueryParams>,
   response: FastifyReply
 ) {
   const { blockId } = request.query;
@@ -25,7 +52,7 @@ async function getTiktokRedirectHandler(
     });
   }
 
-  const session = await getSession(request);
+  const session = await request.server.authenticate(request, response);
 
   if (!session) {
     return response.status(401).send({
@@ -61,18 +88,26 @@ async function getTiktokRedirectHandler(
   return response.redirect(url.toString());
 }
 
+interface TiktokCallbackQueryParams {
+  Querystring: {
+    code: string;
+    state: string;
+  };
+}
+
 interface TikTokTokenResponse {
   open_id: string;
   scope: string;
   access_token: string;
   refresh_token: string;
+  expires_in?: number;
 }
 
 async function getTiktokCallbackHandler(
-  request: FastifyRequest<{ Querystring: { code: string; state: string } }>,
+  request: FastifyRequest<TiktokCallbackQueryParams>,
   response: FastifyReply
 ) {
-  const session = await getSession(request);
+  const session = await request.server.authenticate(request, response);
 
   if (!session?.user) {
     return response.status(401).send({
@@ -94,9 +129,7 @@ async function getTiktokCallbackHandler(
 
   const state = request.query.state as string;
 
-  const decryptedState = await decrypt<{ userId: string; blockId?: string }>(
-    state ?? ''
-  );
+  const decryptedState = await decrypt<EncryptedState>(state ?? '');
 
   if (decryptedState.userId !== session.user.id) {
     return response.status(400).send({
@@ -129,15 +162,12 @@ async function getTiktokCallbackHandler(
       accessToken: data.access_token,
     });
 
-    const userInfoData = await userInfo.json();
+    const userInfoData = (await userInfo.json()) as TikTokUserInfoResponse;
 
     const integration = await prisma.integration.create({
       data: {
-        // To be cleaned up once userId is dropped from the integration table
-        userId: session.user.id,
-        teamId: session.currentTeamId,
+        organizationId: session.activeOrganizationId,
         type: 'tiktok',
-        config: {},
         encryptedConfig,
         displayName: userInfoData?.data?.user?.username || 'TikTok',
       },

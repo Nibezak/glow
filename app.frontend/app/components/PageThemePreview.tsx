@@ -1,5 +1,6 @@
+import { getFontFamilyValue } from '@/lib/fonts';
 import { themeColorToCssValue } from '@/lib/theme';
-import { Theme } from '@tryglow/prisma';
+import { Theme } from '@trylinky/prisma';
 
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
@@ -15,13 +16,24 @@ export function PageThemePreview({
     | 'colorLabelSecondary'
   >;
 }) {
+  const fontFamily = themeValues.font
+    ? getFontFamilyValue(themeValues.font)
+    : undefined;
+  const hasBackgroundImage = !!themeValues.backgroundImage;
+
   return (
     <div
-      className="space-y-2 rounded-lg p-2"
+      className="space-y-2 rounded-lg p-2 relative"
       style={{
         backgroundColor: `hsl(${themeColorToCssValue(
           themeValues.colorBgBase
         )})`,
+        fontFamily: fontFamily,
+        backgroundImage: hasBackgroundImage
+          ? `url(${themeValues.backgroundImage})`
+          : undefined,
+        backgroundSize: hasBackgroundImage ? 'cover' : undefined,
+        backgroundPosition: hasBackgroundImage ? 'center' : undefined,
       }}
     >
       <div

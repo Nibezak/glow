@@ -1,7 +1,11 @@
 'use client';
 
-import { hideGlowTour } from '@/app/lib/auth-actions';
-import { Button } from '@/components/ui/button';
+import { useSession } from '@/app/lib/auth';
+import { hideOnboardingTour } from '@/app/lib/auth-actions';
+import { useTour } from '@reactour/tour';
+import { captureException } from '@sentry/nextjs';
+import { internalApiFetcher } from '@trylinky/common';
+import { UserFlag } from '@trylinky/prisma';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +13,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useTour } from '@reactour/tour';
-import { captureException } from '@sentry/nextjs';
-import { useSession } from 'next-auth/react';
+  Button,
+  useIsMobile,
+} from '@trylinky/ui';
 import { useState } from 'react';
+import useSWR from 'swr';
 
 export function UserOnboardingDialog() {
   const [dialogOpen, setDialogOpen] = useState(true);
@@ -22,11 +25,22 @@ export function UserOnboardingDialog() {
   const { setIsOpen } = useTour();
   const isMobile = useIsMobile();
 
-  if (!session?.features.showGlowTour || isMobile) return null;
+  const { data: userFlags } = useSWR<{ flags: Partial<UserFlag>[] }>(
+    `/flags/me`,
+    internalApiFetcher
+  );
+
+  const showOnboardingTour = userFlags?.flags.find(
+    (flag) => flag.key === 'showOnboardingTour'
+  )?.value;
+
+  if (!showOnboardingTour) {
+    return null;
+  }
 
   const handleClose = async () => {
     try {
-      await hideGlowTour();
+      await hideOnboardingTour();
     } catch (error) {
       captureException(error);
     } finally {
@@ -56,7 +70,7 @@ export function UserOnboardingDialog() {
             />
           </svg>
           <DialogTitle className="text-center font-bold text-2xl mb-1">
-            Welcome to Glow
+            Welcome to Linky
           </DialogTitle>
           <span className="text-center text-slate-600">
             You just created your first page!

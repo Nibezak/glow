@@ -1,23 +1,32 @@
 'use server';
 
 import { ThemeData } from '@/app/components/EditPageSettingsDialog/shared';
-import { auth } from '@/app/lib/auth';
+import { getSession } from '@/app/lib/auth';
 import prisma from '@/lib/prisma';
 import { captureException } from '@sentry/nextjs';
+import { headers } from 'next/headers';
 
 export async function createTheme({
   themeName,
   colorBgBase,
   colorBgPrimary,
   colorBgSecondary,
+  colorTitlePrimary,
+  colorTitleSecondary,
   colorLabelPrimary,
   colorLabelSecondary,
   colorLabelTertiary,
   colorBorderPrimary,
+  font,
+  backgroundImage,
 }: ThemeData) {
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
 
-  if (!session || !session.currentTeamId) {
+  const { user, session: sessionData } = session?.data ?? {};
+
+  if (!user) {
     return {
       error: 'Unauthorized',
     };
@@ -34,15 +43,19 @@ export async function createTheme({
       data: {
         name: themeName,
         isDefault: false,
-        createdById: session.user.id,
-        teamId: session.currentTeamId,
+        createdById: user.id,
+        organizationId: sessionData?.activeOrganizationId,
         colorBgBase,
         colorBgPrimary,
         colorBgSecondary,
+        colorTitlePrimary,
+        colorTitleSecondary,
         colorLabelPrimary,
         colorLabelSecondary,
         colorLabelTertiary,
         colorBorderPrimary,
+        font,
+        backgroundImage,
       },
     });
 
@@ -61,9 +74,13 @@ export async function createTheme({
 }
 
 export async function updateTheme(themeId: string, data: ThemeData) {
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
 
-  if (!session || !session.currentTeamId) {
+  const { user, session: sessionData } = session?.data ?? {};
+
+  if (!user) {
     return {
       error: 'Unauthorized',
     };
@@ -71,7 +88,7 @@ export async function updateTheme(themeId: string, data: ThemeData) {
 
   const theme = await prisma.theme.findFirst({
     where: {
-      teamId: session.currentTeamId,
+      organizationId: sessionData?.activeOrganizationId,
       id: themeId,
       isDefault: false,
     },
@@ -93,10 +110,14 @@ export async function updateTheme(themeId: string, data: ThemeData) {
         colorBgBase: data.colorBgBase,
         colorBgPrimary: data.colorBgPrimary,
         colorBgSecondary: data.colorBgSecondary,
+        colorTitlePrimary: data.colorTitlePrimary,
+        colorTitleSecondary: data.colorTitleSecondary,
         colorLabelPrimary: data.colorLabelPrimary,
         colorLabelSecondary: data.colorLabelSecondary,
         colorLabelTertiary: data.colorLabelTertiary,
         colorBorderPrimary: data.colorBorderPrimary,
+        font: data.font,
+        backgroundImage: data.backgroundImage,
       },
     });
 
@@ -112,9 +133,13 @@ export async function updateTheme(themeId: string, data: ThemeData) {
 }
 
 export async function fetchTheme(themeId: string) {
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
 
-  if (!session || !session.currentTeamId) {
+  const { user, session: sessionData } = session?.data ?? {};
+
+  if (!user) {
     return {
       error: 'Unauthorized',
     };
@@ -123,7 +148,7 @@ export async function fetchTheme(themeId: string) {
   const theme = await prisma.theme.findFirst({
     where: {
       id: themeId,
-      teamId: session.currentTeamId,
+      organizationId: sessionData?.activeOrganizationId,
     },
     select: {
       name: true,
@@ -134,6 +159,8 @@ export async function fetchTheme(themeId: string) {
       colorLabelSecondary: true,
       colorLabelTertiary: true,
       colorBorderPrimary: true,
+      font: true,
+      backgroundImage: true,
     },
   });
 
@@ -149,9 +176,13 @@ export async function fetchTheme(themeId: string) {
 }
 
 export async function setPageTheme(pageSlug: string, themeId: string) {
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
 
-  if (!session || !session.currentTeamId) {
+  const { user } = session?.data ?? {};
+
+  if (!user) {
     return {
       error: 'Unauthorized',
     };
@@ -174,10 +205,10 @@ export async function setPageTheme(pageSlug: string, themeId: string) {
       where: {
         slug: pageSlug,
         deletedAt: null,
-        team: {
+        organization: {
           members: {
             some: {
-              userId: session.user.id,
+              userId: user.id,
             },
           },
         },

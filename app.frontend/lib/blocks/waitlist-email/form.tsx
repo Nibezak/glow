@@ -1,10 +1,10 @@
 import { EditFormProps } from '../types';
 import { FormField } from '@/components/FormField';
-import { Button } from '@/components/ui/button';
 import {
   WaitlistEmailBlockConfig,
   WaitlistEmailBlockSchema,
-} from '@tryglow/blocks';
+} from '@trylinky/blocks';
+import { Button } from '@trylinky/ui';
 import { Form, Formik, FormikHelpers } from 'formik';
 import { Loader2 } from 'lucide-react';
 

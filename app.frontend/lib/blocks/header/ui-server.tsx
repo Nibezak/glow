@@ -1,5 +1,6 @@
 'use server';
 
+import { verifyVerificationStatus } from './utils';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/app/components/ui/dialog';
-import { verifyVerificationStatus } from './utils';
+} from '@trylinky/ui';
 
 const VerifiedBadge = () => {
   return (
@@ -42,16 +42,16 @@ export async function HeaderServerUI({
     <Dialog>
       {verifiedPageTitle}
       <DialogTrigger asChild>
-        <button type="button">
+        <button type="button" className="inline-block ml-2">
           <VerifiedBadge />
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-sm !rounded-xl">
         <DialogHeader className="flex flex-col items-center text-center">
           <VerifiedBadge />
-          <DialogTitle>Verified by Glow</DialogTitle>
+          <DialogTitle>Verified by Linky</DialogTitle>
           <DialogDescription className="text-center">
-            This page has been manually verified by Glow to ensure that the
+            This page has been manually verified by Linky to ensure that the
             person or brand is authentic.
           </DialogDescription>
         </DialogHeader>

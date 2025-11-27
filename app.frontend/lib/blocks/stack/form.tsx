@@ -2,10 +2,15 @@ import { EditFormProps } from '../types';
 import { FormField } from '@/components/FormField';
 import { FormFileUpload } from '@/components/FormFileUpload';
 import { IconSelect } from '@/components/IconSelect';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { StackBlockConfig, StackSchema } from '@tryglow/blocks';
+import { StackBlockConfig, StackSchema } from '@trylinky/blocks';
+import {
+  Button,
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@trylinky/ui';
 import { FieldArray, Form, Formik, FormikHelpers, getIn } from 'formik';
 import { Loader2 } from 'lucide-react';
 
@@ -59,13 +64,13 @@ export function EditForm({
 
                       const initialUploadedIcon = !values.items[
                         index
-                      ].icon.src.startsWith('https://cdn.glow.as/default-data')
+                      ].icon.src.startsWith('https://cdn.lin.ky/default-data')
                         ? values.items[index].icon.src
                         : undefined;
 
                       const initialTab = values.items[
                         index
-                      ].icon.src?.startsWith('https://cdn.glow.as/default-data')
+                      ].icon.src?.startsWith('https://cdn.lin.ky/default-data')
                         ? 'iconGallery'
                         : 'uploadCustom';
 

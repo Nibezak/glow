@@ -1,8 +1,8 @@
 import { BlockProps } from '../ui';
 import { SpotifyEmbedServerUI, SpotifyLogo } from './ui-server';
 import { CoreBlock } from '@/components/CoreBlock';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SpotifyEmbedBlockConfig } from '@tryglow/blocks';
+import { SpotifyEmbedBlockConfig } from '@trylinky/blocks';
+import { Skeleton } from '@trylinky/ui';
 import { FunctionComponent, Suspense } from 'react';
 
 export const SpotifyEmbed: FunctionComponent<

@@ -1,9 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
-
-import { Button } from '@/components/ui/button';
+import { auth } from '@trylinky/common';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+  Button,
+} from '@trylinky/ui';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 export function PremiumOnboardingDialog() {
   const params = useSearchParams();
@@ -29,8 +29,8 @@ export function PremiumOnboardingDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="p-0 !border-0">
-        <DialogHeader className="pt-14 pb-4 bg-gradient-to-b from-orange-300 to-white text-center">
+      <DialogContent className="p-0 !border-0 bg-gradient-to-b from-[#f9f9f8] to-[#f5f3ea]">
+        <DialogHeader className="pt-14 pb-4 text-center">
           <svg
             viewBox="0 0 321 321"
             width={32}
@@ -44,15 +44,19 @@ export function PremiumOnboardingDialog() {
             />
           </svg>
           <DialogTitle className="text-center font-bold text-2xl mb-1">
-            Welcome to Glow Premium!
+            Welcome to Linky Premium!
           </DialogTitle>
           <span className="text-center text-slate-600">
-            Your account has been upgraded to Glow Premium.
+            Your account has been upgraded.
           </span>
         </DialogHeader>
         <section className="px-8 pb-4">
           <DialogFooter>
-            <Button onClick={handleClose} className="w-full">
+            <Button
+              onClick={handleClose}
+              className="w-full rounded-full"
+              size="lg"
+            >
               Begin exploring
             </Button>
           </DialogFooter>
@@ -78,8 +82,8 @@ export function TeamOnboardingDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="p-0 !border-0">
-        <DialogHeader className="pt-14 pb-4 bg-gradient-to-b from-orange-300 to-white text-center">
+      <DialogContent className="p-0 !border-0 bg-gradient-to-b from-[#f9f9f8] to-[#f5f3ea]">
+        <DialogHeader className="pt-14 pb-4 text-center">
           <svg
             viewBox="0 0 321 321"
             width={32}
@@ -93,10 +97,10 @@ export function TeamOnboardingDialog() {
             />
           </svg>
           <DialogTitle className="text-center font-bold text-2xl mb-1">
-            Welcome to Glow for Teams!
+            Welcome to Linky for Teams!
           </DialogTitle>
           <span className="text-center text-slate-600">
-            Your account has been upgraded to Glow for Teams.
+            Your account has been upgraded.
           </span>
         </DialogHeader>
         <section className="px-8 py-4">
@@ -111,10 +115,17 @@ export function TeamOnboardingDialog() {
           <DialogDescription>
             You can manage your team, including inviting your team members, in
             the team settings which can be accessed by clicking on your avatar
-            at the top right of the app.
+            at the top right of the app. Your plan includes 5 team seats, each
+            of which have their own Premium subscription.
           </DialogDescription>
           <DialogFooter className="mt-4 md:mt-8">
-            <Button onClick={handleClose}>Begin exploring</Button>
+            <Button
+              onClick={handleClose}
+              size="lg"
+              className="w-full rounded-full"
+            >
+              Continue
+            </Button>
           </DialogFooter>
         </section>
       </DialogContent>

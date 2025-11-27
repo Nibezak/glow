@@ -2,12 +2,12 @@ import Grid, { PageConfig } from './grid';
 import {
   getPageIdBySlugOrDomain,
   getPageLayout,
+  getPageLoadData,
 } from '@/app/lib/actions/page-actions';
-import { auth } from '@/app/lib/auth';
+import { getSession } from '@/app/lib/auth';
 import { renderBlock } from '@/lib/blocks/ui';
-import prisma from '@/lib/prisma';
 import { isUserAgentMobile } from '@/lib/user-agent';
-import { Integration } from '@tryglow/prisma';
+import { Block, Integration } from '@trylinky/prisma';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
@@ -15,25 +15,6 @@ import { notFound, redirect } from 'next/navigation';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const dynamicParams = true;
-
-const getPageData = async (pageId: string) => {
-  const session = await auth();
-
-  const user = session?.user;
-
-  const page = await prisma.page.findUnique({
-    where: {
-      deletedAt: null,
-      id: pageId,
-    },
-    include: {
-      blocks: true,
-      user: !!user,
-    },
-  });
-
-  return page;
-};
 
 export async function generateMetadata(
   props: { params: Promise<{ slug: string; domain: string }> },
@@ -49,7 +30,7 @@ export async function generateMetadata(
     return {};
   }
 
-  const page = await getPageData(corePage.id);
+  const page = await getPageLoadData(corePage.id);
 
   if (!page || !page.publishedAt) {
     return {};
@@ -60,15 +41,15 @@ export async function generateMetadata(
   return {
     openGraph: {
       images: [
-        `${process.env.NEXT_PUBLIC_BASE_URL}/${page?.slug}/opengraph-image`,
+        `${process.env.NEXT_PUBLIC_APP_URL}/${page?.slug}/opengraph-image`,
       ],
     },
     twitter: {
       images: [
-        `${process.env.NEXT_PUBLIC_BASE_URL}/${page?.slug}/opengraph-image`,
+        `${process.env.NEXT_PUBLIC_APP_URL}/${page?.slug}/opengraph-image`,
       ],
     },
-    title: `${page?.metaTitle} - Glow` || parentMeta.title?.absolute,
+    title: `${page?.metaTitle} - Linky` || parentMeta.title?.absolute,
     description: page?.metaDescription || parentMeta.description,
     alternates: {
       canonical: isCustomDomain
@@ -91,10 +72,15 @@ export type InitialDataUsersIntegrations = Pick<
 export default async function Page(props: { params: Promise<Params> }) {
   const startTime = performance.now();
   const params = await props.params;
-  const session = await auth();
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
+
   const headersList = await headers();
 
-  const isLoggedIn = !!session?.user;
+  const { user } = session?.data ?? {};
+
+  const isLoggedIn = !!user;
 
   // Track core page fetch time
   const corePageStartTime = performance.now();
@@ -109,7 +95,7 @@ export default async function Page(props: { params: Promise<Params> }) {
   const dataFetchStartTime = performance.now();
   const [layout, page] = await Promise.all([
     getPageLayout(corePage.id),
-    getPageData(corePage.id),
+    getPageLoadData(corePage.id),
   ]);
   const dataFetchTime = performance.now() - dataFetchStartTime;
 
@@ -119,7 +105,10 @@ export default async function Page(props: { params: Promise<Params> }) {
 
   let isEditMode = false;
 
-  if (session && page?.teamId === session?.currentTeamId) {
+  if (
+    session &&
+    page?.organizationId === session?.data?.session.activeOrganizationId
+  ) {
     isEditMode = true;
   }
 
@@ -156,10 +145,13 @@ export default async function Page(props: { params: Promise<Params> }) {
       isLoggedIn={isLoggedIn}
     >
       {page.blocks
-        .filter((block) => mergedIds.includes(block.id))
-        .map((block) => {
+        .filter((block: Block) => mergedIds.includes(block.id))
+        .map((block: Block) => {
           return (
-            <section key={block.id}>
+            <section
+              key={block.id}
+              style={{ fontFamily: 'var(--font-sys-body)' }}
+            >
               {renderBlock(block, page.id, isEditMode)}
             </section>
           );

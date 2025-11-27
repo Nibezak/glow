@@ -18,12 +18,22 @@ import {
   getPageIdBySlugOrDomain,
   getPageLayoutById,
   getPageSettings,
-  getPagesForTeamId,
+  getPagesForOrganizationId,
   getPageThemeById,
   updatePageLayout,
 } from './service';
-import { posthog } from '@/lib/posthog';
+import { createPosthogClient } from '@/lib/posthog';
 import prisma from '@/lib/prisma';
+import {
+  getPageLoadHandler,
+  getPageLoadSchema,
+} from '@/modules/pages/handlers/get-page-load';
+import { getPageBySlugOrDomainSchema } from '@/modules/pages/handlers/get-page-slug-or-domain';
+import { getPageBySlugOrDomainHandler } from '@/modules/pages/handlers/get-page-slug-or-domain';
+import {
+  getSlugAvailabilityHandler,
+  getSlugAvailabilitySchema,
+} from '@/modules/pages/handlers/get-slug-availability';
 import { FastifyInstance, FastifyReply } from 'fastify';
 import { FastifyRequest } from 'fastify';
 
@@ -68,6 +78,24 @@ export default async function pagesRoutes(fastify: FastifyInstance, opts: any) {
     getPageBlocksHandler
   );
 
+  fastify.get(
+    '/:pageId/internal/load',
+    { schema: getPageLoadSchema },
+    getPageLoadHandler
+  );
+
+  fastify.get(
+    '/internal/slug-or-domain',
+    { schema: getPageBySlugOrDomainSchema },
+    getPageBySlugOrDomainHandler
+  );
+
+  fastify.get(
+    '/internal/slug-availability',
+    { schema: getSlugAvailabilitySchema },
+    getSlugAvailabilityHandler
+  );
+
   fastify.post('/get-page-id', getPageIdHandler);
 }
 
@@ -84,7 +112,7 @@ async function getPageLayoutHandler(
   const page = await getPageLayoutById(pageId);
 
   if (!page?.publishedAt) {
-    if (session?.currentTeamId !== page?.teamId) {
+    if (session?.activeOrganizationId !== page?.organizationId) {
       return response.status(404).send({});
     }
   }
@@ -108,7 +136,7 @@ async function getPageThemeHandler(
   const page = await getPageThemeById(pageId);
 
   if (!page?.publishedAt) {
-    if (session?.currentTeamId !== page?.teamId) {
+    if (session?.activeOrganizationId !== page?.organizationId) {
       return response.status(404).send({});
     }
   }
@@ -157,7 +185,10 @@ async function getPageBlocksHandler(
 
   let currentUserIsOwner = false;
 
-  if (session?.user.id && page?.teamId === session?.currentTeamId) {
+  if (
+    session?.user.id &&
+    page?.organizationId === session?.activeOrganizationId
+  ) {
     currentUserIsOwner = true;
   }
 
@@ -177,7 +208,7 @@ async function getCurrentUserTeamPagesHandler(
 ) {
   const session = await request.server.authenticate(request, response);
 
-  const pages = await getPagesForTeamId(session.currentTeamId);
+  const pages = await getPagesForOrganizationId(session.activeOrganizationId);
 
   return response.status(200).send(pages);
 }
@@ -198,7 +229,10 @@ export async function getPageSettingsHandler(
 
   let currentUserIsOwner = false;
 
-  if (session?.user.id && page?.teamId === session?.currentTeamId) {
+  if (
+    session?.user.id &&
+    page?.organizationId === session?.activeOrganizationId
+  ) {
     currentUserIsOwner = true;
   }
 
@@ -218,6 +252,8 @@ async function updatePageLayoutHandler(
 ) {
   const session = await request.server.authenticate(request, response);
 
+  const posthog = createPosthogClient();
+
   const { pageId } = request.params;
 
   const userHasAccess = await checkUserHasAccessToPage(pageId, session.user.id);
@@ -230,7 +266,7 @@ async function updatePageLayoutHandler(
 
   const updatedPage = await updatePageLayout(pageId, newLayout);
 
-  posthog.capture({
+  posthog?.capture({
     distinctId: session.user.id,
     event: 'page-layout-updated',
     properties: {
@@ -247,6 +283,9 @@ async function createPageHandler(
 ) {
   const session = await request.server.authenticate(request, response);
 
+  /**
+   * CHECK USER HAS ACTIVE PLAN
+   */
   const { slug, themeId } = request.body;
 
   if (!slug) {
@@ -260,8 +299,8 @@ async function createPageHandler(
   const teamPages = await prisma.page.findMany({
     where: {
       deletedAt: null,
-      team: {
-        id: session.currentTeamId,
+      organization: {
+        id: session.activeOrganizationId,
         members: {
           some: {
             userId: session.user.id,
@@ -270,9 +309,13 @@ async function createPageHandler(
       },
     },
     include: {
-      user: {
+      organization: {
         select: {
-          isAdmin: true,
+          members: {
+            select: {
+              role: true,
+            },
+          },
         },
       },
     },
@@ -284,11 +327,10 @@ async function createPageHandler(
     },
   });
 
-  const maxNumberOfPages =
-    user?.hasPremiumAccess || user?.hasTeamAccess ? 1000 : 2;
+  const maxNumberOfPages = 100;
 
   if (teamPages.length >= maxNumberOfPages) {
-    if (!user?.isAdmin) {
+    if (user?.role !== 'ADMIN') {
       return response.status(400).send({
         error: {
           message: 'You have reached the maximum number of pages',
@@ -303,7 +345,7 @@ async function createPageHandler(
       slug,
       themeId,
       userId: session.user.id,
-      teamId: session.currentTeamId,
+      organizationId: session.activeOrganizationId,
     });
 
     if ('error' in res) {

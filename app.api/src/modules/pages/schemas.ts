@@ -27,6 +27,8 @@ const themeFields = [
   'colorBgPrimary',
   'colorBgSecondary',
   'colorBorderPrimary',
+  'colorTitlePrimary',
+  'colorTitleSecondary',
   'colorLabelPrimary',
   'colorLabelSecondary',
   'colorLabelTertiary',
@@ -34,23 +36,31 @@ const themeFields = [
 
 const themeFieldsSchema = {
   type: 'object',
-  properties: themeFields.reduce((acc: Record<string, any>, field) => {
-    acc[field] = {
-      type: 'object',
-      properties: {
-        h: {
-          type: 'number',
+  properties: {
+    font: {
+      type: 'string',
+    },
+    backgroundImage: {
+      type: 'string',
+    },
+    ...themeFields.reduce((acc: Record<string, any>, field) => {
+      acc[field] = {
+        type: 'object',
+        properties: {
+          h: {
+            type: 'number',
+          },
+          l: {
+            type: 'number',
+          },
+          s: {
+            type: 'number',
+          },
         },
-        l: {
-          type: 'number',
-        },
-        s: {
-          type: 'number',
-        },
-      },
-    };
-    return acc;
-  }, {}),
+      };
+      return acc;
+    }, {}),
+  },
 };
 
 export const getPageThemeSchema = {

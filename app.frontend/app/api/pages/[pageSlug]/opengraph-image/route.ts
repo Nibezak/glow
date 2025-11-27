@@ -1,6 +1,6 @@
 import { getPageTheme } from '@/app/lib/actions/page-actions';
 import prisma from '@/lib/prisma';
-import { HeaderBlockConfig, headerBlockDefaults } from '@tryglow/blocks';
+import { HeaderBlockConfig, headerBlockDefaults } from '@trylinky/blocks';
 import 'server-only';
 
 const getPageId = async (pageSlug: string) => {
@@ -75,7 +75,13 @@ export async function GET(
 
   let avatarSrc = headerBlockData?.avatar?.src;
 
-  if (avatarSrc !== headerBlockDefaults.avatar.src) {
+  if (
+    !avatarSrc.endsWith('.png') &&
+    !avatarSrc.endsWith('.webp') &&
+    !avatarSrc.endsWith('.jpeg') &&
+    !avatarSrc.endsWith('.jpg')
+  ) {
+    // Accounts for old avatar URLs that didn't have a file extension
     avatarSrc = `${avatarSrc}.png`;
   }
 
@@ -88,6 +94,7 @@ export async function GET(
       },
       headerTitle: headerBlockData?.title ?? `@${pageSlug}`,
       headerDescription: headerBlockData?.description,
+      verifiedPageTitle: headerBlockData?.verifiedPageTitle,
       avatarSrc,
     },
   });

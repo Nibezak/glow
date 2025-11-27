@@ -1,56 +1,85 @@
 'use strict';
 
-import { cancelSubscription, setupSubscription } from './service';
-import { captureException } from '@sentry/node';
-import { FastifyInstance, FastifyReply } from 'fastify';
-import { FastifyRequest } from 'fastify';
-import Stripe from 'stripe';
+import {
+  getBillingPortalUrlHandler,
+  getBillingPortalUrlSchema,
+} from './handlers/billing-portal-url';
+import {
+  cancelSubscriptionHandler,
+  cancelSubscriptionSchema,
+} from './handlers/cancel-subscription';
+import {
+  getCurrentUserSubscriptionHandler,
+  getCurrentUserSubscriptionSchema,
+} from './handlers/current-user-subscription';
+import { stripeWebhookHandler } from './handlers/stripe';
+import {
+  getUpgradeEligibilitySchema,
+  getUpgradeEligibilityHandler,
+} from './handlers/upgrade-eligibility';
+import {
+  upgradeToPremiumHandler,
+  upgradeToPremiumSchema,
+} from './handlers/upgrade-to-premium';
+import {
+  upgradeToTeamHandler,
+  upgradeToTeamSchema,
+} from './handlers/upgrade-to-team';
+import {
+  upgradeTrialHandler,
+  upgradeTrialSchema,
+} from './handlers/upgrade-trial';
+import { FastifyInstance } from 'fastify';
 
 export default async function billingRoutes(
   fastify: FastifyInstance,
   opts: any
 ) {
   fastify.post(
-    '/stripe/callback',
+    '/stripe-webhook',
     { config: { rawBody: true } },
-    postStripeCallbackHandler
+    stripeWebhookHandler
   );
-}
+  fastify.get(
+    '/subscription/me',
+    {
+      schema: getCurrentUserSubscriptionSchema,
+    },
+    getCurrentUserSubscriptionHandler
+  );
+  fastify.get(
+    '/upgrade-eligibility',
+    { schema: getUpgradeEligibilitySchema },
+    getUpgradeEligibilityHandler
+  );
 
-const stripe = new Stripe(process.env.STRIPE_API_SECRET_KEY as string);
+  fastify.post(
+    '/get-billing-portal-url',
+    { schema: getBillingPortalUrlSchema },
+    getBillingPortalUrlHandler
+  );
 
-async function postStripeCallbackHandler(
-  request: FastifyRequest<{ Body: { rawBody: string }; RawBody: string }>,
-  response: FastifyReply
-) {
-  const signature = request.headers['stripe-signature'] as string;
+  fastify.post(
+    '/cancel-subscription',
+    { schema: cancelSubscriptionSchema },
+    cancelSubscriptionHandler
+  );
 
-  let event: Stripe.Event;
+  fastify.post(
+    '/upgrade-trial',
+    { schema: upgradeTrialSchema },
+    upgradeTrialHandler
+  );
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      request.rawBody as string,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch (error) {
-    captureException(error);
-    return response.status(400).send({ error: 'Invalid signature' });
-  }
+  fastify.post(
+    '/upgrade/team',
+    { schema: upgradeToTeamSchema },
+    upgradeToTeamHandler
+  );
 
-  try {
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await setupSubscription(event.data.object.id);
-        break;
-      case 'customer.subscription.deleted':
-        await cancelSubscription(event.data.object.id);
-        break;
-    }
-  } catch (error) {
-    captureException(error);
-    return response.status(400).send({ error: 'Failed to process webhook' });
-  }
-
-  return response.status(200).send({ received: true });
+  fastify.post(
+    '/upgrade/premium',
+    { schema: upgradeToPremiumSchema },
+    upgradeToPremiumHandler
+  );
 }

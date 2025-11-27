@@ -1,8 +1,8 @@
-<a href="https://glow.as">
-  <img alt="Glow - The open-source dynamic personal page builder" src=".github/cover.png">
+<a href="https://lin.ky">
+  <img alt="Linky - The open-source dynamic personal page builder" src=".github/cover.png">
 </a>
 
-<h3 align="center">Glow</h3>
+<h3 align="center">Linky</h3>
 
 <p align="center">
     An open-source dynamic personal page builder.
@@ -18,7 +18,7 @@
 
 ## Hello
 
-Glow is an open-source dynamic personal page builder.
+Linky is an open-source dynamic personal page builder.
 
 https://github.com/user-attachments/assets/d2c04b21-eb96-459b-8751-0c2bcb904da8
 
@@ -28,12 +28,15 @@ https://github.com/user-attachments/assets/d2c04b21-eb96-459b-8751-0c2bcb904da8
 - [TypeScript](https://www.typescriptlang.org/) – language
 - [Tailwind](https://tailwindcss.com/) – CSS
 - [NextAuth.js](https://next-auth.js.org/) – auth
-- [Loops](https://loops.so/) – emails
+- [Resend](https://resend.com/) – emails
 - [Vercel](https://vercel.com/) – deployments
 
 ## Self-Hosting
 
-You can self-host Glow if you would like to run it yourself. I haven't written up a guide yet, but watch this space! (or just get stuck in and try it out yourself!)
+You can self-host Linky if you would like to run it yourself.
+
+- [Local Development](./docs/local-development.md)
+- [Self-hosting](./docs/self-hosting.md)
 
 ## License
 

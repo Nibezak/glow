@@ -10,11 +10,11 @@ const generateRandomCode = () => {
 };
 
 const createPage = async ({
-  teamId,
+  organizationId,
   userId,
   tiktokUsername,
 }: {
-  teamId: string;
+  organizationId: string;
   userId: string;
   tiktokUsername: string;
 }) => {
@@ -40,11 +40,10 @@ const createPage = async ({
   try {
     const page = await prisma.page.create({
       data: {
-        userId,
-        teamId,
+        organizationId,
         slug: newPageSlug,
-        metaTitle: `${tiktokUsername} on Glow`,
-        metaDescription: `${tiktokUsername} on Glow`,
+        metaTitle: `${tiktokUsername} on Linky`,
+        metaDescription: `${tiktokUsername} on Linky`,
         publishedAt: new Date(),
         config: {},
       },
@@ -76,7 +75,7 @@ const createHeaderBlock = async ({
         config: {},
         data: {
           title: tiktokDisplayName,
-          description: `@${tiktokUsername} on Glow`,
+          description: `@${tiktokUsername} on Linky`,
           avatar: avatarUrl
             ? {
                 src: avatarUrl,
@@ -103,7 +102,7 @@ const createContentBlock = async ({ pageId }: { pageId: string }) => {
         data: {
           title: 'Welcome to my page!',
           content:
-            "This is my new page on Glow. I'm a TikTok creator, and I post videos about... well, you'll have to see for yourself!",
+            "This is my new page on Linky. I'm a TikTok creator, and I post videos about... well, you'll have to see for yourself!",
         },
       },
     });
@@ -126,7 +125,7 @@ const createStackBlock = async ({ pageId }: { pageId: string }) => {
           items: [
             {
               icon: {
-                src: 'https://cdn.glow.as/default-data/icons/instagram.svg',
+                src: 'https://cdn.lin.ky/default-data/icons/instagram.svg',
               },
               link: 'https://instagram.com',
               label: '@yourinstagramhandle',
@@ -134,7 +133,7 @@ const createStackBlock = async ({ pageId }: { pageId: string }) => {
             },
             {
               icon: {
-                src: 'https://cdn.glow.as/default-data/icons/twitter.svg',
+                src: 'https://cdn.lin.ky/default-data/icons/twitter.svg',
               },
               link: 'https://x.com',
               label: '@yourxhandle',
@@ -142,7 +141,7 @@ const createStackBlock = async ({ pageId }: { pageId: string }) => {
             },
             {
               icon: {
-                src: 'https://cdn.glow.as/default-data/icons/youtube.svg',
+                src: 'https://cdn.lin.ky/default-data/icons/youtube.svg',
               },
               link: 'https://youtube.com',
               label: '@youryoutubechannel',
@@ -243,14 +242,12 @@ const createTikTokLatestVideoBlock = async ({
 };
 
 const createTiktokIntegration = async ({
-  userId,
-  teamId,
+  organizationId,
   accessToken,
   refreshToken,
   displayName,
 }: {
-  userId: string;
-  teamId: string;
+  organizationId: string;
   accessToken: string;
   refreshToken: string;
   displayName: string;
@@ -263,11 +260,9 @@ const createTiktokIntegration = async ({
   try {
     const integration = await prisma.integration.create({
       data: {
-        userId,
-        teamId,
+        organizationId,
         type: 'tiktok',
         encryptedConfig,
-        config: {},
         displayName,
       },
     });
@@ -279,23 +274,92 @@ const createTiktokIntegration = async ({
   }
 };
 
-// TODO - Handle refreshing the token if it's expired
-const fetchTikTokProfile = async ({ accessToken }: { accessToken: string }) => {
+const refreshTikTokToken = async (refreshToken: string) => {
+  try {
+    const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_key: process.env.TIKTOK_CLIENT_KEY!,
+        client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (data.error) {
+      captureException(new Error(`TikTok token refresh failed: ${data.error}`));
+      return null;
+    }
+
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+    };
+  } catch (error) {
+    captureException(error);
+    return null;
+  }
+};
+
+const fetchTikTokProfile = async ({ 
+  accessToken, 
+  refreshToken,
+  userId 
+}: { 
+  accessToken: string;
+  refreshToken?: string;
+  userId?: string;
+}) => {
   const options = {
     fields: 'avatar_url,display_name,follower_count,username',
   };
 
   const qs = new URLSearchParams(options).toString();
 
-  const req = await fetch(`https://open.tiktokapis.com/v2/user/info/?${qs}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  let currentAccessToken = accessToken;
 
-  const { data, error } = await req.json();
+  const makeRequest = async (token: string) => {
+    const req = await fetch(`https://open.tiktokapis.com/v2/user/info/?${qs}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  if (error.code !== 'ok') {
+    return req.json();
+  };
+
+  let { data, error } = await makeRequest(currentAccessToken);
+
+  // If token expired and we have refresh token, try to refresh
+  if (error && error.code === 'access_token_invalid' && refreshToken && userId) {
+    const newTokens = await refreshTikTokToken(refreshToken);
+    
+    if (newTokens) {
+      // Update the stored tokens in database
+      await prisma.account.updateMany({
+        where: {
+          userId,
+          providerId: 'tiktok',
+        },
+        data: {
+          accessToken: newTokens.accessToken,
+          refreshToken: newTokens.refreshToken,
+        },
+      });
+
+      // Retry with new token
+      const retryResult = await makeRequest(newTokens.accessToken);
+      data = retryResult.data;
+      error = retryResult.error;
+    }
+  }
+
+  if (error && error.code !== 'ok') {
     captureException(error);
     return null;
   }
@@ -477,7 +541,7 @@ const getTikTokAccessToken = async ({ userId }: { userId: string }) => {
   const tiktokAccount = await prisma.account.findFirst({
     where: {
       userId,
-      provider: 'tiktok',
+      providerId: 'tiktok',
     },
   });
 
@@ -486,8 +550,8 @@ const getTikTokAccessToken = async ({ userId }: { userId: string }) => {
   }
 
   return {
-    refreshToken: tiktokAccount?.refresh_token,
-    accessToken: tiktokAccount?.access_token,
+    refreshToken: tiktokAccount?.refreshToken,
+    accessToken: tiktokAccount?.accessToken,
   };
 };
 
@@ -528,11 +592,11 @@ const uploadAvatar = async ({
 
 export async function orchestrateTikTok({
   orchestrationId,
-  teamId,
+  organizationId,
   userId,
 }: {
   orchestrationId: string;
-  teamId: string;
+  organizationId: string;
   userId: string;
 }) {
   const orchestration = await prisma.orchestration.findUnique({
@@ -573,6 +637,8 @@ export async function orchestrateTikTok({
 
   const tiktokData = await fetchTikTokProfile({
     accessToken: tiktokTokens.accessToken,
+    refreshToken: tiktokTokens.refreshToken,
+    userId,
   });
 
   if (!tiktokData) {
@@ -586,7 +652,7 @@ export async function orchestrateTikTok({
   });
 
   const page = await createPage({
-    teamId,
+    organizationId,
     userId,
     tiktokUsername: tiktokData?.profile?.username,
   });
@@ -604,8 +670,7 @@ export async function orchestrateTikTok({
   });
 
   const tiktokIntegration = await createTiktokIntegration({
-    teamId,
-    userId,
+    organizationId,
     accessToken: tiktokTokens.accessToken,
     refreshToken: tiktokTokens.refreshToken,
     displayName: `@${tiktokData?.profile?.username}`,

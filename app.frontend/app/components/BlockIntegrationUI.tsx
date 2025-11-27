@@ -2,19 +2,18 @@ import { InstagramLogo } from '@/app/components/integration-icons/Instagram';
 import { SpotifyLogo } from '@/app/components/integration-icons/spotify';
 import { ThreadsLogo } from '@/app/components/integration-icons/threads';
 import { TikTokLogo } from '@/app/components/integration-icons/tiktok';
+import { captureException } from '@sentry/nextjs';
+import { InternalApi, internalApiFetcher } from '@trylinky/common';
+import { Integration } from '@trylinky/prisma';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/ui/select';
-import { InternalApi } from '@/app/lib/api';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/use-toast';
-import { internalApiFetcher } from '@/lib/fetch';
-import { captureException } from '@sentry/nextjs';
-import { Integration } from '@tryglow/prisma';
+  Button,
+  toast,
+} from '@trylinky/ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -163,8 +162,8 @@ export function BlockIntegrationUI({
             <div className="mt-4">
               <span className="font-normal text-stone-600 mt-1">
                 You already have an {integrationUIConfig[integrationType].name}{' '}
-                account connected to Glow. Select your account below, or connect
-                a new one.
+                account connected to Linky. Select your account below, or
+                connect a new one.
               </span>
               <Select onValueChange={handleSelectIntegration}>
                 <SelectTrigger className="w-full max-w-[220px] mx-auto mt-4 bg-white">

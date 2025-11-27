@@ -1,12 +1,16 @@
 import { EditFormProps } from '../types';
-import { Checkbox } from '@/app/components/ui/checkbox';
-import { Label } from '@/app/components/ui/label';
-import { FormField } from '@/components/FormField';
+import { FormField } from '@/app/components/FormField';
 import { FormFileUpload } from '@/components/FormFileUpload';
-import { Button } from '@/components/ui/button';
-import { internalApiFetcher } from '@/lib/fetch';
-import { HeaderBlockConfig, HeaderSchema } from '@tryglow/blocks';
-import { Page } from '@tryglow/prisma';
+import { HeaderBlockConfig, HeaderSchema } from '@trylinky/blocks';
+import { internalApiFetcher } from '@trylinky/common';
+import { Page } from '@trylinky/prisma';
+import {
+  Button,
+  Checkbox,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
+} from '@trylinky/ui';
 import { Form, Formik, FormikHelpers } from 'formik';
 import { Loader2 } from 'lucide-react';
 import useSWR, { useSWRConfig } from 'swr';
@@ -42,6 +46,7 @@ export function EditForm({
         avatar: {
           src: initialValues?.avatar?.src ?? '',
         },
+        alignment: initialValues?.alignment ?? 'left',
         showVerifiedBadge: initialValues?.showVerifiedBadge ?? false,
         verifiedPageTitle: initialValues?.verifiedPageTitle ?? '',
       }}
@@ -71,23 +76,36 @@ export function EditForm({
           {pageSettings?.verifiedAt && (
             <div className="flex items-start space-x-2 my-4">
               <Checkbox
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked: boolean) =>
                   setFieldValue('showVerifiedBadge', checked)
                 }
-                id="showVerifiedBadge"
-                name="showVerifiedBadge"
                 checked={values.showVerifiedBadge}
+                id="showVerifiedBadge"
               />
               <div className="flex flex-col gap-1">
                 <Label htmlFor="showVerifiedBadge">Show verified badge</Label>
                 <span className="text-sm text-stone-500">
-                  Your page has been verified by Glow. You can choose to show
-                  the verification badge, however the header title will only
-                  show the verified page name.
+                  Your page has been verified by Linky. You can choose to show
+                  this badge on your page.
                 </span>
               </div>
             </div>
           )}
+
+          <Label htmlFor="alignment">Alignment</Label>
+          <RadioGroup
+            defaultValue={values.alignment}
+            onValueChange={(value: string) => setFieldValue('alignment', value)}
+          >
+            {['left', 'center', 'right'].map((alignment) => (
+              <div className="flex items-center space-x-2" key={alignment}>
+                <RadioGroupItem value={alignment} id={alignment} />
+                <Label htmlFor={alignment}>
+                  {alignment.charAt(0).toUpperCase() + alignment.slice(1)}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
 
           <FormField
             label="Subtitle"

@@ -8,16 +8,18 @@ export interface HeaderBlockConfig {
   };
   showVerifiedBadge: boolean;
   verifiedPageTitle: string;
+  alignment: 'left' | 'center' | 'right';
 }
 
 export const headerBlockDefaults: HeaderBlockConfig = {
   avatar: {
-    src: 'https://cdn.glow.as/default-data/avatar.png',
+    src: 'https://cdn.lin.ky/default-data/avatar.png',
   },
   title: 'Hello World',
   description: 'Welcome to your new page',
   showVerifiedBadge: false,
   verifiedPageTitle: '',
+  alignment: 'left',
 };
 
 export const HeaderSchema = Yup.object().shape({
@@ -27,4 +29,5 @@ export const HeaderSchema = Yup.object().shape({
     src: Yup.string(),
   }),
   showVerifiedBadge: Yup.boolean(),
+  alignment: Yup.string().oneOf(['left', 'center', 'right']),
 });

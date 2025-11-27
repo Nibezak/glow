@@ -1,32 +1,38 @@
-import { authConfig } from './lib/auth';
+import { auth } from './lib/auth';
 import prisma from './lib/prisma';
 import './lib/sentry';
 import blocksRoutes from './modules/blocks';
 import { coreRoutes } from './modules/core';
+import marketingRoutes from './modules/marketing';
 import pagesRoutes from './modules/pages';
 import tiktokServiceRoutes from './modules/services/tiktok';
 import { authenticateDecorator } from '@/decorators/authenticate';
+import { trustedOrigins } from '@/lib/origins';
+import analyticsRoutes from '@/modules/analytics';
 import assetsRoutes from '@/modules/assets';
 import billingRoutes from '@/modules/billing';
+import flagsRoutes from '@/modules/flags';
 import integrationsRoutes from '@/modules/integrations';
 import orchestratorsRoutes from '@/modules/orchestrators';
+import organizationsRoutes from '@/modules/organizations';
 import reactionsRoutes from '@/modules/reactions';
 import instagramServiceRoutes from '@/modules/services/instagram';
 import spotifyServiceRoutes from '@/modules/services/spotify';
 import threadsServiceRoutes from '@/modules/services/threads';
-import teamsRoutes from '@/modules/teams';
 import themesRoutes from '@/modules/themes';
-import { ExpressAuth } from '@auth/express';
 import cors from '@fastify/cors';
 import fastifyExpress from '@fastify/express';
 import fastifyMultipart from '@fastify/multipart';
 import fastifySensible from '@fastify/sensible';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as Sentry from '@sentry/node';
 import 'dotenv/config';
 import Fastify, { FastifyInstance } from 'fastify';
+import FastifyBetterAuth from 'fastify-better-auth';
 import fastifyRawBody from 'fastify-raw-body';
 
-export const fastify: FastifyInstance = Fastify();
+export const fastify: FastifyInstance =
+  Fastify().withTypeProvider<TypeBoxTypeProvider>();
 
 await fastify.register(fastifyExpress);
 await fastify.register(fastifySensible);
@@ -46,7 +52,7 @@ await fastify.register(fastifyMultipart, {
 });
 
 await fastify.register(cors, {
-  origin: true, // Allow all origins
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
   exposedHeaders: ['Content-Length'], // Expose specific headers
@@ -55,15 +61,19 @@ await fastify.register(cors, {
 });
 
 fastify.register(coreRoutes);
+fastify.register(marketingRoutes, { prefix: '/marketing' });
 fastify.register(blocksRoutes, { prefix: '/blocks' });
 fastify.register(pagesRoutes, { prefix: '/pages' });
 fastify.register(themesRoutes, { prefix: '/themes' });
-fastify.register(teamsRoutes, { prefix: '/teams' });
+
 fastify.register(integrationsRoutes, { prefix: '/integrations' });
 fastify.register(reactionsRoutes, { prefix: '/reactions' });
 fastify.register(assetsRoutes, { prefix: '/assets' });
-fastify.register(billingRoutes, { prefix: '/billing' });
 fastify.register(orchestratorsRoutes, { prefix: '/orchestrators' });
+fastify.register(analyticsRoutes, { prefix: '/analytics' });
+fastify.register(flagsRoutes, { prefix: '/flags' });
+fastify.register(organizationsRoutes, { prefix: '/organizations' });
+fastify.register(billingRoutes, { prefix: '/billing' });
 
 fastify.register(tiktokServiceRoutes, { prefix: '/services/tiktok' });
 fastify.register(instagramServiceRoutes, { prefix: '/services/instagram' });
@@ -72,7 +82,7 @@ fastify.register(spotifyServiceRoutes, {
   prefix: '/services/spotify',
 });
 
-fastify.use('/auth', ExpressAuth(authConfig));
+fastify.register(FastifyBetterAuth, { auth });
 
 fastify.decorate('authenticate', authenticateDecorator);
 
@@ -85,7 +95,7 @@ fastify.addHook('onRequest', async (request, reply) => {
 fastify.addHook('onResponse', async (request, reply) => {
   if (request.startTime) {
     const responseTime = Date.now() - request.startTime;
-    if (responseTime > 400) {
+    if (responseTime > 200) {
       console.log(`Request to ${request.raw.url} took ${responseTime}ms`);
     }
   }

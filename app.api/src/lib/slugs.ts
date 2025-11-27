@@ -2,6 +2,7 @@ const FORBIDDEN_SLUGS_REGEXPS = [
   // Meteor app routes
   'page-not-found',
   'docs',
+  'explore',
   'terms-of-use',
   'about',
   'pricing',
@@ -824,17 +825,7 @@ export function isForbiddenSlug(slug: string): boolean {
 }
 
 export function isReservedSlug(slug: string): boolean {
-  const reservedSlugs = [
-    'alex',
-    'tom',
-    'will',
-    'william',
-    'will',
-    'fabi',
-    'fabiana',
-    'onedash',
-    'glow',
-  ];
+  const reservedSlugs = ['onedash', 'glow'];
 
   if (reservedSlugs.includes(slug.toLowerCase())) {
     return true;

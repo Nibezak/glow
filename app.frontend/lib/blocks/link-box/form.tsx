@@ -2,10 +2,16 @@ import { EditFormProps } from '../types';
 import { FormField } from '@/components/FormField';
 import { FormFileUpload } from '@/components/FormFileUpload';
 import { IconSelect } from '@/components/IconSelect';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LinkBoxBlockConfig, LinkBoxSchema } from '@tryglow/blocks';
+import { LinkBoxBlockConfig, LinkBoxSchema } from '@trylinky/blocks';
+import {
+  Button,
+  Checkbox,
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@trylinky/ui';
 import { Form, Formik, FormikHelpers } from 'formik';
 import { Loader2 } from 'lucide-react';
 
@@ -32,6 +38,7 @@ export function EditForm({
         icon: {
           src: initialValues?.icon?.src,
         },
+        showPreview: initialValues?.showPreview,
       }}
       validationSchema={LinkBoxSchema}
       onSubmit={onSubmit}
@@ -39,13 +46,13 @@ export function EditForm({
     >
       {({ isSubmitting, setFieldValue, errors, values }) => {
         const initialUploadedIcon = !initialValues?.icon?.src.startsWith(
-          'https://cdn.glow.as/default-data'
+          'https://cdn.lin.ky/default-data'
         )
           ? initialValues?.icon?.src
           : undefined;
 
         const initialTab = values?.icon?.src?.startsWith(
-          'https://cdn.glow.as/default-data'
+          'https://cdn.lin.ky/default-data'
         )
           ? 'iconGallery'
           : 'uploadCustom';
@@ -66,6 +73,19 @@ export function EditForm({
               error={errors.label}
             />
             <FormField label="Link" name="link" id="link" error={errors.link} />
+            <div className="flex items-start space-x-2 my-4">
+              <Checkbox
+                onCheckedChange={(checked: boolean) =>
+                  setFieldValue('showPreview', checked)
+                }
+                checked={values.showPreview}
+                id="showPreview"
+              />
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="showPreview">Show preview</Label>
+              </div>
+            </div>
+
             <Label className="mb-1 mt-3">Select an icon</Label>
 
             <Tabs defaultValue={initialTab} className="w-full">

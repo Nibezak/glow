@@ -1,7 +1,8 @@
 import { BlockProps } from '../ui';
 import { HeaderServerUI } from './ui-server';
 import { CoreBlock } from '@/components/CoreBlock';
-import { HeaderBlockConfig } from '@tryglow/blocks';
+import { HeaderBlockConfig } from '@trylinky/blocks';
+import { cn } from '@trylinky/ui';
 import Image from 'next/image';
 import { FunctionComponent, Suspense } from 'react';
 
@@ -11,21 +12,28 @@ export const Header: FunctionComponent<BlockProps & HeaderBlockConfig> = ({
   avatar,
   showVerifiedBadge,
   verifiedPageTitle,
+  alignment = 'left',
   ...otherProps
 }) => {
   return (
     <CoreBlock {...otherProps} isFrameless>
-      <header className="py-4">
+      <header
+        className={cn(
+          'py-4 flex flex-col',
+          alignment === 'center' && 'items-center text-center text-pretty',
+          alignment === 'right' && 'items-end'
+        )}
+      >
         {avatar?.src && (
           <Image
             src={avatar.src}
-            alt=""
+            alt="Profile avatar"
             width={80}
             height={80}
             className="mb-6 rounded-lg"
           />
         )}
-        <h1 className="font-bold text-4xl mb-1 text-sys-label-primary flex items-center gap-2">
+        <h1 className="font-bold text-4xl mb-1 text-sys-title-primary">
           {showVerifiedBadge ? (
             <Suspense>
               <HeaderServerUI
@@ -38,7 +46,7 @@ export const Header: FunctionComponent<BlockProps & HeaderBlockConfig> = ({
             title
           )}
         </h1>
-        <p className="text-2xl text-sys-label-secondary">{description}</p>
+        <p className="text-2xl text-sys-title-secondary">{description}</p>
       </header>
     </CoreBlock>
   );

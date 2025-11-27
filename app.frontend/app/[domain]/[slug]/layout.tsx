@@ -1,5 +1,6 @@
 import { RenderPageTheme } from '@/app/[domain]/[slug]/render-page-theme';
-import { GlowProviders } from '@/app/components/GlowProviders';
+import { LinkyProviders } from '@/app/components/LinkyProviders';
+import { ShareButton } from '@/app/components/ShareButton';
 import { UserOnboardingDialog } from '@/app/components/UserOnboardingDialog';
 import { getEnabledBlocks } from '@/app/lib/actions/blocks';
 import { getTeamIntegrations } from '@/app/lib/actions/integrations';
@@ -10,12 +11,12 @@ import {
   getPageSettings,
   getPageTheme,
 } from '@/app/lib/actions/page-actions';
-import { auth } from '@/app/lib/auth';
+import { getSession } from '@/app/lib/auth';
 import {
   PremiumOnboardingDialog,
   TeamOnboardingDialog,
 } from '@/components/PremiumOnboardingDialog';
-import { Button } from '@/components/ui/button';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Script from 'next/script';
@@ -29,44 +30,43 @@ export default async function PageLayout(props: {
     domain: string;
   }>;
 }) {
-  const startTime = performance.now();
   const params = await props.params;
   const { children } = props;
-  const session = await auth();
+
+  const session = await getSession({
+    fetchOptions: { headers: await headers() },
+  });
 
   // Combine initial page fetch with settings to reduce queries
-  const pageStartTime = performance.now();
   const page = await getPageIdBySlugOrDomain(params.slug, params.domain);
-  const pageTime = performance.now() - pageStartTime;
 
   if (!page) {
     return notFound();
   }
 
-  if (!page.publishedAt && session?.currentTeamId !== page.teamId) {
+  if (
+    !page.publishedAt &&
+    session?.data?.session.activeOrganizationId !== page.organizationId
+  ) {
     return notFound();
   }
 
   // Batch fetch data for logged in users
-  const userDataStartTime = performance.now();
-  const [integrations, enabledBlocks, pageSettings] = session?.user
+  const [integrations, enabledBlocks, pageSettings] = session?.data?.user
     ? await Promise.all([
         getTeamIntegrations(),
         getEnabledBlocks(),
         getPageSettings(page.id),
       ])
     : [null, null, null];
-  const userDataTime = performance.now() - userDataStartTime;
 
   // Batch fetch core page data
-  const coreDataStartTime = performance.now();
   const [{ blocks, currentUserIsOwner }, pageLayout, pageTheme] =
     await Promise.all([
       getPageBlocks(page.id),
       getPageLayout(page.id),
       getPageTheme(page.id),
     ]);
-  const coreDataTime = performance.now() - coreDataStartTime;
 
   const initialData: Record<string, any> = {
     [`/pages/${page.id}/layout`]: pageLayout,
@@ -87,17 +87,8 @@ export default async function PageLayout(props: {
     });
   }
 
-  // Add performance headers
-  const totalTime = performance.now() - startTime;
-  const responseHeaders = new Headers();
-  responseHeaders.append('Server-Timing', `page;dur=${pageTime}`);
-  responseHeaders.append('Server-Timing', `user-data;dur=${userDataTime}`);
-  responseHeaders.append('Server-Timing', `core-data;dur=${coreDataTime}`);
-  responseHeaders.append('Server-Timing', `total;dur=${totalTime}`);
-
   return (
-    <GlowProviders
-      session={session}
+    <LinkyProviders
       currentUserIsOwner={currentUserIsOwner}
       pageId={page.id}
       value={{
@@ -107,20 +98,27 @@ export default async function PageLayout(props: {
         revalidateIfStale: currentUserIsOwner,
       }}
     >
-      {!session?.user && (
-        <Button
-          variant="default"
-          asChild
-          className="fixed z-50 top-3 right-3 font-bold flex"
-        >
-          <Link href="https://glow.as">Built with Glow</Link>
-        </Button>
-      )}
-
       {pageTheme?.publishedAt && !currentUserIsOwner ? (
-        <main className="bg-sys-bg-base min-h-screen">
-          <div className="w-full max-w-[672px] mx-auto px-3 md:px-6 gap-3 pt-16 pb-8">
+        <main className="bg-sys-bg-base min-h-screen app-page">
+          <div className="w-full max-w-[672px] mx-auto px-3 md:px-6 gap-3 pb-8">
+            <div className="w-full py-3 flex items-center">
+              <ShareButton />
+            </div>
             {children}
+
+            <div className="w-full py-3 flex items-center justify-center">
+              <Link
+                href={`https://lin.ky/?utm_source=page_footer&utm_campaign=${page.slug}`}
+                className="flex flex-col text-center justify-center"
+              >
+                <span className="uppercase text-[0.6rem] tracking-tight font-medium text-sys-title-secondary">
+                  Made with{' '}
+                </span>
+                <span className="font-bold text-lg -mt-1 text-sys-title-primary">
+                  linky
+                </span>
+              </Link>
+            </div>
           </div>
         </main>
       ) : (
@@ -141,7 +139,7 @@ export default async function PageLayout(props: {
 
       <RenderPageTheme pageId={page.id} />
 
-      {session?.user && (
+      {session?.data?.user && (
         <>
           <PremiumOnboardingDialog />
           <TeamOnboardingDialog />
@@ -152,12 +150,14 @@ export default async function PageLayout(props: {
       {!currentUserIsOwner &&
         process.env.NEXT_PUBLIC_TINYBIRD_TRACKER_TOKEN && (
           <Script
-            defer
-            src="https://unpkg.com/@tinybirdco/flock.js"
+            id="tinybird-tracker"
+            strategy="afterInteractive"
+            src="/assets/tracker.js"
             data-host="https://api.us-west-2.aws.tinybird.co"
             data-token={process.env.NEXT_PUBLIC_TINYBIRD_TRACKER_TOKEN}
+            data-page-id={page.id}
           />
         )}
-    </GlowProviders>
+    </LinkyProviders>
   );
 }

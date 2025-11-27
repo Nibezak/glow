@@ -1,11 +1,11 @@
 import { EditPageSettingsGeneral } from '@/app/components/EditPageSettingsDialog/EditPageSettingsGeneralForm';
+import { internalApiFetcher } from '@trylinky/common';
+import { Page } from '@trylinky/prisma';
 import {
   SidebarContentHeader,
   SidebarGroup,
   SidebarGroupContent,
-} from '@/app/components/ui/sidebar';
-import { internalApiFetcher } from '@/lib/fetch';
-import { Page } from '@tryglow/prisma';
+} from '@trylinky/ui';
 import useSWR, { useSWRConfig } from 'swr';
 
 export function SidebarPageSettings() {

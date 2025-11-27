@@ -1,19 +1,22 @@
 'use client';
 
-import { TeamInvite, User } from '@tryglow/prisma';
+import { FormField } from '../FormField';
+import { teamInviteSchema } from './shared';
+import { auth } from '@/app/lib/auth';
+import { captureException } from '@sentry/nextjs';
+import { Invitation, User } from '@trylinky/prisma';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  cn,
+  useToast,
+} from '@trylinky/ui';
 import { Form, Formik, FormikHelpers } from 'formik';
 import { withZodSchema } from 'formik-validator-zod';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
-
-import { captureException } from '@sentry/nextjs';
-import { FormField } from '../FormField';
-import { createTeamInvite } from './actions';
-import { teamInviteSchema } from './shared';
 
 export type TeamInviteFormValues = {
   email: string;
@@ -21,8 +24,8 @@ export type TeamInviteFormValues = {
 
 interface Props {
   onCancel: () => void;
-  members: { user: Partial<User> }[];
-  invites?: TeamInvite[];
+  members: { user: Partial<User>; role: 'owner' | 'admin' | 'member' }[];
+  invites?: Partial<Invitation>[];
 }
 
 export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
@@ -36,13 +39,16 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
     setSubmitting(true);
 
     try {
-      const response = await createTeamInvite(values);
+      const invite = await auth.organization.inviteMember({
+        email: values.email,
+        role: 'member',
+      });
 
-      if (response?.error) {
+      if (invite?.error) {
         toast({
           variant: 'error',
           title: 'Something went wrong',
-          description: response.error.message,
+          description: invite.error.message,
         });
 
         return;
@@ -50,7 +56,7 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
 
       toast({
         title: 'Invite sent',
-        description: 'We sent an invite to ' + values.email,
+        description: 'We sent an invite to ' + invite.data?.email,
       });
       router.refresh();
       onCancel();
@@ -63,6 +69,27 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    try {
+      await auth.organization.cancelInvitation({
+        invitationId: inviteId,
+      });
+
+      toast({
+        title: 'Invite cancelled',
+        description: 'The invite has been cancelled',
+      });
+
+      router.refresh();
+    } catch (error) {
+      captureException(error);
+      toast({
+        title: 'Something went wrong',
+        description: 'Sorry, there was a problem cancelling the invite',
+      });
     }
   };
 
@@ -93,8 +120,15 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
                 </td>
 
                 <td className="whitespace-nowrap text-right px-3 py-3">
-                  <span className="bg-green-200 tracking-tight font-bold text-xs uppercase rounded-sm px-1.5 py-0.5 text-green-700">
-                    Admin
+                  <span
+                    className={cn(
+                      'tracking-tight font-bold text-xs uppercase rounded-sm px-1.5 py-0.5',
+                      member.role === 'admin' && 'bg-red-200 text-red-700',
+                      member.role === 'member' && 'bg-blue-200 text-blue-700',
+                      member.role === 'owner' && 'bg-purple-200 text-purple-700'
+                    )}
+                  >
+                    {member.role}
                   </span>
                 </td>
               </tr>
@@ -107,6 +141,14 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
                   {invite.email}
                 </td>
                 <td className="whitespace-nowrap text-right px-3 py-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="inline-flex w-fit mr-4"
+                    onClick={() => handleCancelInvite(invite.id as string)}
+                  >
+                    Cancel invite
+                  </Button>
                   <span className="bg-yellow-300 tracking-tight font-bold text-xs uppercase rounded-sm px-1.5 py-0.5 text-yellow-800">
                     Invited
                   </span>
@@ -139,7 +181,7 @@ export function EditTeamSettingsMembers({ onCancel, members, invites }: Props) {
                 <FormField
                   label="Email"
                   name="email"
-                  placeholder="hey@glow.as"
+                  placeholder="hey@lin.ky"
                   id="email"
                   error={errors.email}
                 />

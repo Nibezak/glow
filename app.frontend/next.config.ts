@@ -1,24 +1,36 @@
-import createMDX from '@next/mdx';
 import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
-const withMDX = createMDX();
-
 const nextConfig: NextConfig = {
+  transpilePackages: ['@trylinky/ui', '@trylinky/common'],
   rewrites: async () => [
     {
       source: '/',
-      destination: '/i/landing-page',
+      destination: `${process.env.NEXT_PUBLIC_MARKETING_URL}/i`,
     },
     {
-      source: '/new-api/:path*',
-      destination: 'http://localhost:3001/:path*',
+      source: '/sitemap.xml',
+      destination: `${process.env.NEXT_PUBLIC_MARKETING_URL}/i/sitemap.xml`,
+    },
+    {
+      source: '/i/:path*',
+      destination: `${process.env.NEXT_PUBLIC_MARKETING_URL}/i/:path*`,
     },
   ],
   redirects: async () => [
     {
       source: '/pricing',
       destination: '/i/pricing',
+      permanent: true,
+    },
+    {
+      source: '/i/learn/what-is-glow',
+      destination: '/i/learn/what-is-linky',
+      permanent: true,
+    },
+    {
+      source: '/i/learn/is-glow-free',
+      destination: '/i/learn/is-linky-free',
       permanent: true,
     },
   ],
@@ -44,13 +56,25 @@ const nextConfig: NextConfig = {
         hostname: 'cdn.glow.as',
         port: '',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.dev.lin.ky',
+        port: '',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.lin.ky',
+        port: '',
+      },
     ],
   },
 };
 
-export default withSentryConfig(withMDX(nextConfig), {
+export default withSentryConfig(nextConfig, {
   org: 'hyperdusk',
   project: 'glow',
   silent: false,
-  hideSourceMaps: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
 });
